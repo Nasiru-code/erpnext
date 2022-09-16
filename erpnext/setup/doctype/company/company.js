@@ -12,14 +12,13 @@ frappe.ui.form.on("Company", {
 				}
 			});
 		}
+
+		frm.call('check_if_transactions_exist').then(r => {
+			frm.toggle_enable("default_currency", (!r.message));
+		});
 	},
 	setup: function(frm) {
 		erpnext.company.setup_queries(frm);
-		frm.set_query("hra_component", function(){
-			return {
-				filters: {"type": "Earning"}
-			}
-		});
 
 		frm.set_query("parent_company", function() {
 			return {
@@ -44,43 +43,6 @@ frappe.ui.form.on("Company", {
 				}
 			};
 		});
-	},
-
-	change_abbreviation(frm) {
-		var dialog = new frappe.ui.Dialog({
-			title: "Replace Abbr",
-			fields: [
-				{"fieldtype": "Data", "label": "New Abbreviation", "fieldname": "new_abbr",
-					"reqd": 1 },
-				{"fieldtype": "Button", "label": "Update", "fieldname": "update"},
-			]
-		});
-
-		dialog.fields_dict.update.$input.click(function() {
-			var args = dialog.get_values();
-			if (!args) return;
-			frappe.show_alert(__("Update in progress. It might take a while."));
-			return frappe.call({
-				method: "erpnext.setup.doctype.company.company.enqueue_replace_abbr",
-				args: {
-					"company": frm.doc.name,
-					"old": frm.doc.abbr,
-					"new": args.new_abbr
-				},
-				callback: function(r) {
-					if (r.exc) {
-						frappe.msgprint(__("There were errors."));
-						return;
-					} else {
-						frm.set_value("abbr", args.new_abbr);
-					}
-					dialog.hide();
-					frm.refresh();
-				},
-				btn: this
-			});
-		});
-		dialog.show();
 	},
 
 	company_name: function(frm) {
@@ -112,20 +74,14 @@ frappe.ui.form.on("Company", {
 	},
 
 	refresh: function(frm) {
-		if(!frm.doc.__islocal) {
-			frm.doc.abbr && frm.set_df_property("abbr", "read_only", 1);
-			frm.set_df_property("parent_company", "read_only", 1);
-			disbale_coa_fields(frm);
-		}
+		frm.toggle_display('address_html', !frm.is_new());
 
-		frm.toggle_display('address_html', !frm.doc.__islocal);
-		if(!frm.doc.__islocal) {
+		if (!frm.is_new()) {
+			frm.doc.abbr && frm.set_df_property("abbr", "read_only", 1);
+			disbale_coa_fields(frm);
 			frappe.contacts.render_address_and_contact(frm);
 
 			frappe.dynamic_link = {doc: frm.doc, fieldname: 'name', doctype: 'Company'}
-
-			frm.toggle_enable("default_currency", (frm.doc.__onload &&
-				!frm.doc.__onload.transactions_exist));
 
 			if (frappe.perm.has_perm("Cost Center", 0, 'read')) {
 				frm.add_custom_button(__('Cost Centers'), function() {
@@ -164,10 +120,6 @@ frappe.ui.form.on("Company", {
 					}, __('Manage'));
 				}
 			}
-
-			frm.add_custom_button(__('Change Abbreviation'), () => {
-				frm.trigger('change_abbreviation');
-			}, __('Manage'));
 		}
 
 		erpnext.company.set_chart_of_accounts_options(frm.doc);
@@ -253,14 +205,15 @@ erpnext.company.setup_queries = function(frm) {
 		["default_payable_account", {"account_type": "Payable"}],
 		["default_expense_account", {"root_type": "Expense"}],
 		["default_income_account", {"root_type": "Income"}],
-		["default_payroll_payable_account", {"root_type": "Liability"}],
 		["round_off_account", {"root_type": "Expense"}],
 		["write_off_account", {"root_type": "Expense"}],
+		["default_deferred_expense_account", {}],
+		["default_deferred_revenue_account", {}],
 		["default_discount_account", {}],
 		["discount_allowed_account", {"root_type": "Expense"}],
 		["discount_received_account", {"root_type": "Income"}],
-		["exchange_gain_loss_account", {"root_type": "Expense"}],
-		["unrealized_exchange_gain_loss_account", {"root_type": "Expense"}],
+		["exchange_gain_loss_account", {"root_type": ["in", ["Expense", "Income"]]}],
+		["unrealized_exchange_gain_loss_account", {"root_type": ["in", ["Expense", "Income"]]}],
 		["accumulated_depreciation_account",
 			{"root_type": "Asset", "account_type": "Accumulated Depreciation"}],
 		["depreciation_expense_account", {"root_type": "Expense", "account_type": "Depreciation"}],
@@ -269,11 +222,11 @@ erpnext.company.setup_queries = function(frm) {
 		["cost_center", {}],
 		["round_off_cost_center", {}],
 		["depreciation_cost_center", {}],
-		["default_employee_advance_account", {"root_type": "Asset"}],
 		["expenses_included_in_asset_valuation", {"account_type": "Expenses Included In Asset Valuation"}],
 		["capital_work_in_progress_account", {"account_type": "Capital Work in Progress"}],
 		["asset_received_but_not_billed", {"account_type": "Asset Received But Not Billed"}],
-		["unrealized_profit_loss_account", {"root_type": ["in", ["Liability", "Asset"]]}]
+		["unrealized_profit_loss_account", {"root_type": ["in", ["Liability", "Asset"]]}],
+		["default_provisional_account", {"root_type": ["in", ["Liability", "Asset"]]}]
 	], function(i, v) {
 		erpnext.company.set_custom_query(frm, v);
 	});

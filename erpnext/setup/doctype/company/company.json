@@ -3,7 +3,7 @@
  "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:company_name",
- "creation": "2013-04-10 08:35:39",
+ "creation": "2022-01-25 10:29:55.938239",
  "description": "Legal Entity / Subsidiary with a separate Chart of Accounts belonging to the Organization.",
  "doctype": "DocType",
  "document_type": "Setup",
@@ -15,6 +15,7 @@
   "default_currency",
   "country",
   "is_group",
+  "default_holiday_list",
   "cb0",
   "default_letter_head",
   "tax_id",
@@ -48,12 +49,6 @@
   "default_warehouse_for_sales_return",
   "credit_limit",
   "transactions_annual_history",
-  "hr_settings_section",
-  "default_holiday_list",
-  "default_expense_claim_payable_account",
-  "column_break_10",
-  "default_employee_advance_account",
-  "default_payroll_payable_account",
   "default_settings",
   "default_bank_account",
   "default_cash_account",
@@ -77,20 +72,19 @@
   "default_finance_book",
   "auto_accounting_for_stock_settings",
   "enable_perpetual_inventory",
-  "enable_perpetual_inventory_for_non_stock_items",
+  "enable_provisional_accounting_for_non_stock_items",
   "default_inventory_account",
   "stock_adjustment_account",
   "default_in_transit_warehouse",
   "column_break_32",
   "stock_received_but_not_billed",
-  "service_received_but_not_billed",
+  "default_provisional_account",
   "expenses_included_in_valuation",
   "fixed_asset_defaults",
   "accumulated_depreciation_account",
   "depreciation_expense_account",
   "series_for_depreciation_entry",
   "expenses_included_in_asset_valuation",
-  "repair_and_maintenance_account",
   "column_break_40",
   "disposal_account",
   "depreciation_cost_center",
@@ -125,7 +119,8 @@
    "label": "Abbr",
    "oldfieldname": "abbr",
    "oldfieldtype": "Data",
-   "reqd": 1
+   "reqd": 1,
+   "set_only_once": 1
   },
   {
    "bold": 1,
@@ -146,9 +141,8 @@
   },
   {
    "fieldname": "domain",
-   "fieldtype": "Link",
-   "label": "Domain",
-   "options": "Domain"
+   "fieldtype": "Data",
+   "label": "Domain"
   },
   {
    "fieldname": "parent_company",
@@ -238,10 +232,6 @@
    "fieldtype": "Link",
    "label": "Default Warehouse for Sales Return",
    "options": "Warehouse"
-  },
-  {
-   "fieldname": "column_break_10",
-   "fieldtype": "Column Break"
   },
   {
    "fieldname": "country",
@@ -375,13 +365,6 @@
    "options": "Account"
   },
   {
-   "fieldname": "default_employee_advance_account",
-   "fieldtype": "Link",
-   "label": "Default Employee Advance Account",
-   "no_copy": 1,
-   "options": "Account"
-  },
-  {
    "depends_on": "eval:!doc.__islocal",
    "fieldname": "default_expense_account",
    "fieldtype": "Link",
@@ -414,24 +397,6 @@
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
    "label": "Default Deferred Expense Account",
-   "no_copy": 1,
-   "options": "Account"
-  },
-  {
-   "depends_on": "eval:!doc.__islocal",
-   "fieldname": "default_payroll_payable_account",
-   "fieldtype": "Link",
-   "ignore_user_permissions": 1,
-   "label": "Default Payroll Payable Account",
-   "no_copy": 1,
-   "options": "Account"
-  },
-  {
-   "depends_on": "eval:!doc.__islocal",
-   "fieldname": "default_expense_claim_payable_account",
-   "fieldtype": "Link",
-   "ignore_user_permissions": 1,
-   "label": "Default Expense Claim Payable Account",
    "no_copy": 1,
    "options": "Account"
   },
@@ -684,20 +649,6 @@
    "options": "Terms and Conditions"
   },
   {
-   "fieldname": "service_received_but_not_billed",
-   "fieldtype": "Link",
-   "ignore_user_permissions": 1,
-   "label": "Service Received But Not Billed",
-   "no_copy": 1,
-   "options": "Account"
-  },
-  {
-   "default": "0",
-   "fieldname": "enable_perpetual_inventory_for_non_stock_items",
-   "fieldtype": "Check",
-   "label": "Enable Perpetual Inventory For Non Stock Items"
-  },
-  {
    "fieldname": "default_in_transit_warehouse",
    "fieldtype": "Link",
    "label": "Default In-Transit Warehouse",
@@ -716,11 +667,6 @@
    "options": "Account"
   },
   {
-   "fieldname": "hr_settings_section",
-   "fieldtype": "Section Break",
-   "label": "HR & Payroll Settings"
-  },
-  {
    "fieldname": "column_break_26",
    "fieldtype": "Column Break"
   },
@@ -731,15 +677,23 @@
    "label": "Fixed Asset Defaults"
   },
   {
-   "fieldname": "repair_and_maintenance_account",
-   "fieldtype": "Link",
-   "label": "Repair and Maintenance Account",
-   "options": "Account"
-  },
-  {
    "fieldname": "section_break_28",
    "fieldtype": "Section Break",
    "label": "Chart of Accounts"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_provisional_accounting_for_non_stock_items",
+   "fieldtype": "Check",
+   "label": "Enable Provisional Accounting For Non Stock Items"
+  },
+  {
+   "fieldname": "default_provisional_account",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "label": "Default Provisional Account",
+   "no_copy": 1,
+   "options": "Account"
   }
  ],
  "icon": "fa fa-building",
@@ -747,10 +701,11 @@
  "image_field": "company_logo",
  "is_tree": 1,
  "links": [],
- "modified": "2021-07-12 11:27:06.353860",
+ "modified": "2022-08-16 16:09:02.327724",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Company",
+ "naming_rule": "By fieldname",
  "nsm_parent_field": "parent_company",
  "owner": "Administrator",
  "permissions": [
@@ -807,5 +762,6 @@
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "ASC",
+ "states": [],
  "track_changes": 1
 }
