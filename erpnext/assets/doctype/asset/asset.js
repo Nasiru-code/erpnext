@@ -230,7 +230,7 @@ frappe.ui.form.on('Asset', {
 				datasets: [{
 					color: 'green',
 					values: asset_values,
-					formatted: asset_values.map(d => d.toFixed(2))
+					formatted: asset_values.map(d => d?.toFixed(2))
 				}]
 			},
 			type: 'line'
@@ -239,8 +239,10 @@ frappe.ui.form.on('Asset', {
 
 
 	item_code: function(frm) {
-		if(frm.doc.item_code) {
+		if(frm.doc.item_code && frm.doc.calculate_depreciation) {
 			frm.trigger('set_finance_book');
+		} else {
+			frm.set_value('finance_books', []);
 		}
 	},
 
@@ -381,6 +383,11 @@ frappe.ui.form.on('Asset', {
 
 	calculate_depreciation: function(frm) {
 		frm.toggle_reqd("finance_books", frm.doc.calculate_depreciation);
+		if (frm.doc.item_code && frm.doc.calculate_depreciation ) {
+			frm.trigger("set_finance_book");
+		} else {
+			frm.set_value("finance_books", []);
+		}
 	},
 
 	gross_purchase_amount: function(frm) {
@@ -425,7 +432,11 @@ frappe.ui.form.on('Asset', {
 
 	set_values_from_purchase_doc: function(frm, doctype, purchase_doc) {
 		frm.set_value('company', purchase_doc.company);
-		frm.set_value('purchase_date', purchase_doc.posting_date);
+		if (purchase_doc.bill_date) {
+			frm.set_value('purchase_date', purchase_doc.bill_date);
+		} else {
+			frm.set_value('purchase_date', purchase_doc.posting_date);
+		}
 		const item = purchase_doc.items.find(item => item.item_code === frm.doc.item_code);
 		if (!item) {
 			doctype_field = frappe.scrub(doctype)

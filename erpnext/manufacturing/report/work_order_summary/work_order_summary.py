@@ -39,9 +39,13 @@ def get_data(filters):
 		"lead_time",
 	]
 
-	for field in ["sales_order", "production_item", "status", "company"]:
+	for field in ["sales_order", "production_item"]:
 		if filters.get(field):
 			query_filters[field] = ("in", filters.get(field))
+
+	for field in ["status", "company"]:
+		if filters.get(field):
+			query_filters[field] = filters.get(field)
 
 	query_filters["planned_start_date"] = (">=", filters.get("from_date"))
 	query_filters["planned_end_date"] = ("<=", filters.get("to_date"))
@@ -83,6 +87,7 @@ def get_chart_based_on_status(data):
 	for d in data:
 		status_wise_data[d.status] += 1
 
+	labels = [_(label) for label in labels]
 	values = [status_wise_data[label] for label in labels]
 
 	chart = {
@@ -95,7 +100,7 @@ def get_chart_based_on_status(data):
 
 
 def get_chart_based_on_age(data):
-	labels = ["0-30 Days", "30-60 Days", "60-90 Days", "90 Above"]
+	labels = [_("0-30 Days"), _("30-60 Days"), _("60-90 Days"), _("90 Above")]
 
 	age_wise_data = {"0-30 Days": 0, "30-60 Days": 0, "60-90 Days": 0, "90 Above": 0}
 
@@ -135,8 +140,8 @@ def get_chart_based_on_qty(data, filters):
 		pending.append(periodic_data.get("Pending").get(d))
 		completed.append(periodic_data.get("Completed").get(d))
 
-	datasets.append({"name": "Pending", "values": pending})
-	datasets.append({"name": "Completed", "values": completed})
+	datasets.append({"name": _("Pending"), "values": pending})
+	datasets.append({"name": _("Completed"), "values": completed})
 
 	chart = {
 		"data": {"labels": labels, "datasets": datasets},

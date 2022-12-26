@@ -5,7 +5,6 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.model.naming import make_autoname
 from frappe.utils import add_months, flt, fmt_money, get_last_day, getdate
 
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (
@@ -23,11 +22,6 @@ class DuplicateBudgetError(frappe.ValidationError):
 
 
 class Budget(Document):
-	def autoname(self):
-		self.name = make_autoname(
-			self.get(frappe.scrub(self.budget_against)) + "/" + self.fiscal_year + "/.###"
-		)
-
 	def validate(self):
 		if not self.get(frappe.scrub(self.budget_against)):
 			frappe.throw(_("{0} is mandatory").format(self.budget_against))
@@ -65,7 +59,7 @@ class Budget(Document):
 		account_list = []
 		for d in self.get("accounts"):
 			if d.account:
-				account_details = frappe.db.get_value(
+				account_details = frappe.get_cached_value(
 					"Account", d.account, ["is_group", "company", "report_type"], as_dict=1
 				)
 
@@ -109,8 +103,11 @@ class Budget(Document):
 		):
 			self.applicable_on_booking_actual_expenses = 1
 
+	def before_naming(self):
+		self.naming_series = f"{{{frappe.scrub(self.budget_against)}}}./.{self.fiscal_year}/.###"
 
-def validate_expense_against_budget(args):
+
+def validate_expense_against_budget(args, expense_amount=0):
 	args = frappe._dict(args)
 
 	if args.get("company") and not args.fiscal_year:
@@ -178,13 +175,13 @@ def validate_expense_against_budget(args):
 			)  # nosec
 
 			if budget_records:
-				validate_budget_records(args, budget_records)
+				validate_budget_records(args, budget_records, expense_amount)
 
 
-def validate_budget_records(args, budget_records):
+def validate_budget_records(args, budget_records, expense_amount):
 	for budget in budget_records:
 		if flt(budget.budget_amount):
-			amount = get_amount(args, budget)
+			amount = expense_amount or get_amount(args, budget)
 			yearly_action, monthly_action = get_actions(args, budget)
 
 			if monthly_action in ["Stop", "Warn"]:
@@ -309,7 +306,7 @@ def get_other_condition(args, budget, for_doc):
 
 	if args.get("fiscal_year"):
 		date_field = "schedule_date" if for_doc == "Material Request" else "transaction_date"
-		start_date, end_date = frappe.db.get_value(
+		start_date, end_date = frappe.get_cached_value(
 			"Fiscal Year", args.get("fiscal_year"), ["year_start_date", "year_end_date"]
 		)
 
@@ -382,7 +379,7 @@ def get_accumulated_monthly_budget(monthly_distribution, posting_date, fiscal_ye
 		):
 			distribution.setdefault(d.month, d.percentage_allocation)
 
-	dt = frappe.db.get_value("Fiscal Year", fiscal_year, "year_start_date")
+	dt = frappe.get_cached_value("Fiscal Year", fiscal_year, "year_start_date")
 	accumulated_percentage = 0.0
 
 	while dt <= getdate(posting_date):

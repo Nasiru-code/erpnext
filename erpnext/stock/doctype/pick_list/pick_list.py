@@ -10,6 +10,8 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.model.mapper import map_child_doc
+from frappe.query_builder import Case
+from frappe.query_builder.functions import Locate
 from frappe.utils import cint, floor, flt, today
 from frappe.utils.nestedset import get_descendants_of
 
@@ -183,20 +185,20 @@ class PickList(Document):
 				frappe.throw("Row #{0}: Item Code is Mandatory".format(item.idx))
 			item_code = item.item_code
 			reference = item.sales_order_item or item.material_request_item
-			key = (item_code, item.uom, item.warehouse, reference)
+			key = (item_code, item.uom, item.warehouse, item.batch_no, reference)
 
 			item.idx = None
 			item.name = None
 
 			if item_map.get(key):
 				item_map[key].qty += item.qty
-				item_map[key].stock_qty += item.stock_qty
+				item_map[key].stock_qty += flt(item.stock_qty, item.precision("stock_qty"))
 			else:
 				item_map[key] = item
 
 			# maintain count of each item (useful to limit get query)
 			self.item_count_map.setdefault(item_code, 0)
-			self.item_count_map[item_code] += item.stock_qty
+			self.item_count_map[item_code] += flt(item.stock_qty, item.precision("stock_qty"))
 
 		return item_map.values()
 
@@ -686,31 +688,22 @@ def create_stock_entry(pick_list):
 
 @frappe.whitelist()
 def get_pending_work_orders(doctype, txt, searchfield, start, page_length, filters, as_dict):
-	return frappe.db.sql(
-		"""
-		SELECT
-			`name`, `company`, `planned_start_date`
-		FROM
-			`tabWork Order`
-		WHERE
-			`status` not in ('Completed', 'Stopped')
-			AND `qty` > `material_transferred_for_manufacturing`
-			AND `docstatus` = 1
-			AND `company` = %(company)s
-			AND `name` like %(txt)s
-		ORDER BY
-			(case when locate(%(_txt)s, name) > 0 then locate(%(_txt)s, name) else 99999 end) name
-		LIMIT
-			%(start)s, %(page_length)s""",
-		{
-			"txt": "%%%s%%" % txt,
-			"_txt": txt.replace("%", ""),
-			"start": start,
-			"page_length": frappe.utils.cint(page_length),
-			"company": filters.get("company"),
-		},
-		as_dict=as_dict,
-	)
+	wo = frappe.qb.DocType("Work Order")
+	return (
+		frappe.qb.from_(wo)
+		.select(wo.name, wo.company, wo.planned_start_date)
+		.where(
+			(wo.status.notin(["Completed", "Stopped"]))
+			& (wo.qty > wo.material_transferred_for_manufacturing)
+			& (wo.docstatus == 1)
+			& (wo.company == filters.get("company"))
+			& (wo.name.like("%{0}%".format(txt)))
+		)
+		.orderby(Case().when(Locate(txt, wo.name) > 0, Locate(txt, wo.name)).else_(99999))
+		.orderby(wo.name)
+		.limit(cint(page_length))
+		.offset(start)
+	).run(as_dict=as_dict)
 
 
 @frappe.whitelist()

@@ -37,8 +37,10 @@ class Bin(Document):
 
 		self.set_projected_qty()
 
-		self.db_set("reserved_qty_for_production", flt(self.reserved_qty_for_production))
-		self.db_set("projected_qty", self.projected_qty)
+		self.db_set(
+			"reserved_qty_for_production", flt(self.reserved_qty_for_production), update_modified=True
+		)
+		self.db_set("projected_qty", self.projected_qty, update_modified=True)
 
 	def update_reserved_qty_for_sub_contracting(self, subcontract_doctype="Subcontracting Order"):
 		# reserved qty
@@ -118,9 +120,9 @@ class Bin(Document):
 		else:
 			reserved_qty_for_sub_contract = 0
 
-		self.db_set("reserved_qty_for_sub_contract", reserved_qty_for_sub_contract)
+		self.db_set("reserved_qty_for_sub_contract", reserved_qty_for_sub_contract, update_modified=True)
 		self.set_projected_qty()
-		self.db_set("projected_qty", self.projected_qty)
+		self.db_set("projected_qty", self.projected_qty, update_modified=True)
 
 
 def on_doctype_update():
@@ -160,6 +162,7 @@ def update_qty(bin_name, args):
 			.where((sle.item_code == args.get("item_code")) & (sle.warehouse == args.get("warehouse")))
 			.orderby(CombineDatetime(sle.posting_date, sle.posting_time), order=Order.desc)
 			.orderby(sle.creation, order=Order.desc)
+			.limit(1)
 			.run()
 		)
 
@@ -193,4 +196,5 @@ def update_qty(bin_name, args):
 			"planned_qty": planned_qty,
 			"projected_qty": projected_qty,
 		},
+		update_modified=True,
 	)

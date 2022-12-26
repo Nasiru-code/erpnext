@@ -625,6 +625,12 @@ frappe.ui.form.on('Stock Entry', {
 	purchase_order: (frm) => {
 		if (frm.doc.purchase_order) {
 			frm.set_value("subcontracting_order", "");
+			erpnext.utils.map_current_doc({
+				method: 'erpnext.stock.doctype.stock_entry.stock_entry.get_items_from_subcontract_order',
+				source_name: frm.doc.purchase_order,
+				target_doc: frm,
+				freeze: true,
+			});
 		}
 	},
 
@@ -632,7 +638,7 @@ frappe.ui.form.on('Stock Entry', {
 		if (frm.doc.subcontracting_order) {
 			frm.set_value("purchase_order", "");
 			erpnext.utils.map_current_doc({
-				method: 'erpnext.stock.doctype.stock_entry.stock_entry.get_items_from_subcontracting_order',
+				method: 'erpnext.stock.doctype.stock_entry.stock_entry.get_items_from_subcontract_order',
 				source_name: frm.doc.subcontracting_order,
 				target_doc: frm,
 				freeze: true,
@@ -1073,7 +1079,8 @@ erpnext.stock.select_batch_and_serial_no = (frm, item) => {
 	if (frm.doc.purpose === 'Material Receipt') return;
 
 	frappe.require("assets/erpnext/js/utils/serial_no_batch_selector.js", function() {
-		new erpnext.SerialNoBatchSelector({
+		if (frm.batch_selector?.dialog?.display) return;
+		frm.batch_selector = new erpnext.SerialNoBatchSelector({
 			frm: frm,
 			item: item,
 			warehouse_details: get_warehouse_type_and_name(item),

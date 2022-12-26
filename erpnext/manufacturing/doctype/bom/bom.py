@@ -206,8 +206,8 @@ class BOM(WebsiteGenerator):
 		self.manage_default_bom()
 
 	def on_cancel(self):
-		frappe.db.set(self, "is_active", 0)
-		frappe.db.set(self, "is_default", 0)
+		self.db_set("is_active", 0)
+		self.db_set("is_default", 0)
 
 		# check if used in any other bom
 		self.validate_bom_links()
@@ -385,6 +385,7 @@ class BOM(WebsiteGenerator):
 		if self.docstatus == 2:
 			return
 
+		self.flags.cost_updated = False
 		existing_bom_cost = self.total_cost
 
 		if self.docstatus == 1:
@@ -407,7 +408,11 @@ class BOM(WebsiteGenerator):
 				frappe.get_doc("BOM", bom).update_cost(from_child_bom=True)
 
 		if not from_child_bom:
-			frappe.msgprint(_("Cost Updated"), alert=True)
+			msg = "Cost Updated"
+			if not self.flags.cost_updated:
+				msg = "No changes in cost found"
+
+			frappe.msgprint(_(msg), alert=True)
 
 	def update_parent_cost(self):
 		if self.total_cost:
@@ -444,10 +449,10 @@ class BOM(WebsiteGenerator):
 			not frappe.db.exists(dict(doctype="BOM", docstatus=1, item=self.item, is_default=1))
 			and self.is_active
 		):
-			frappe.db.set(self, "is_default", 1)
+			self.db_set("is_default", 1)
 			frappe.db.set_value("Item", self.item, "default_bom", self.name)
 		else:
-			frappe.db.set(self, "is_default", 0)
+			self.db_set("is_default", 0)
 			item = frappe.get_doc("Item", self.item)
 			if item.default_bom == self.name:
 				frappe.db.set_value("Item", self.item, "default_bom", None)
@@ -593,10 +598,15 @@ class BOM(WebsiteGenerator):
 			# not via doc event, table is not regenerated and needs updation
 			self.calculate_exploded_cost()
 
+		old_cost = self.total_cost
+
 		self.total_cost = self.operating_cost + self.raw_material_cost - self.scrap_material_cost
 		self.base_total_cost = (
 			self.base_operating_cost + self.base_raw_material_cost - self.base_scrap_material_cost
 		)
+
+		if self.total_cost != old_cost:
+			self.flags.cost_updated = True
 
 	def calculate_op_cost(self, update_hour_rate=False):
 		"""Update workstation rate and calculates totals"""
@@ -1019,7 +1029,6 @@ def get_bom_items_as_dict(
 			where
 				bom_item.docstatus < 2
 				and bom.name = %(bom)s
-				and ifnull(item.has_variants, 0) = 0
 				and item.is_stock_item in (1, {is_stock_item})
 				{where_conditions}
 				group by item_code, stock_uom

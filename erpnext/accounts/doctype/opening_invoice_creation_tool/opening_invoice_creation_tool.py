@@ -255,17 +255,15 @@ def start_import(invoices):
 
 
 def publish(index, total, doctype):
-	if total < 50:
-		return
 	frappe.publish_realtime(
 		"opening_invoice_creation_progress",
 		dict(
 			title=_("Opening Invoice Creation In Progress"),
 			message=_("Creating {} out of {} {}").format(index + 1, total, doctype),
-			user=frappe.session.user,
 			count=index + 1,
 			total=total,
 		),
+		user=frappe.session.user,
 	)
 
 

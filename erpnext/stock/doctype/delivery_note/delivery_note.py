@@ -842,6 +842,9 @@ def make_inter_company_transaction(doctype, source_name, target_doc=None):
 			update_address(
 				target_doc, "shipping_address", "shipping_address_display", source_doc.customer_address
 			)
+			update_address(
+				target_doc, "billing_address", "billing_address_display", source_doc.customer_address
+			)
 
 			update_taxes(
 				target_doc,
@@ -899,6 +902,8 @@ def make_inter_company_transaction(doctype, source_name, target_doc=None):
 					"serial_no": "serial_no",
 					"purchase_order": "purchase_order",
 					"purchase_order_item": "purchase_order_item",
+					"material_request": "material_request",
+					"Material_request_item": "material_request_item",
 				},
 				"field_no_map": ["warehouse"],
 			},
